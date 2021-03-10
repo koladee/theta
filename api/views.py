@@ -419,7 +419,7 @@ class ChatEndpoint(APIView):
                 if profile.bot_pause is not True or command == "/pause":
                     if len(cmds) >= 1:
                         if cmds[0][1:] == "alias":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='alias')
                                     Config.objects.filter(user=profile, key='alias').update(content=command[7:],
@@ -436,7 +436,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid alias supplied!"
 
                         if cmds[0][1:] == "followmsg":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='followmsg')
                                     Config.objects.filter(user=profile, key='followmsg').\
@@ -453,7 +453,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid follow message supplied!"
 
                         if cmds[0][1:] == "hellomsg":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='hellomsg')
                                     Config.objects.filter(user=profile, key='hellomsg').update(content=command[10:],
@@ -471,7 +471,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid hello message supplied!"
 
                         if cmds[0][1:] == "hellomsgsub":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='hellomsgsub')
                                     Config.objects.filter(user=profile, key='hellomsgsub').\
@@ -488,7 +488,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid hello message for sub supplied!"
 
                         if cmds[0][1:] == "hellomsgmod":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='hellomsgmod')
                                     Config.objects.filter(user=profile, key='hellomsgmod').\
@@ -505,7 +505,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid hello message for mod supplied!"
 
                         if cmds[0][1:] == "donationmsg":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='donationmsg')
                                     Config.objects.filter(user=profile, key='donationmsg').\
@@ -522,7 +522,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid donation message for mod supplied!"
 
                         if cmds[0][1:] == "submsg":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='submsg')
                                     Config.objects.filter(user=profile, key='submsg').update(content=command[8:],
@@ -540,7 +540,7 @@ class ChatEndpoint(APIView):
                                 msg = "Invalid sub message for mod supplied!"
 
                         if cmds[0][1:] == "levelupmsg":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='levelupmsg')
                                     Config.objects.filter(user=profile, key='levelupmsg').update(content=command[8:],
@@ -574,7 +574,7 @@ class ChatEndpoint(APIView):
                                 msg = "You do not have "+command[6:]+" setting configured."
 
                         if cmds[0][1:] == "add":
-                            if cmds[1] != "":
+                            if len(cmds) > 1:
                                 st = 5 + len(cmds[1]) + 1
                                 if command[st:] != "":
                                     if cmds[1] not in coms:
