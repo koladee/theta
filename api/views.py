@@ -909,6 +909,13 @@ class ChatEndpoint(APIView):
                             else:
                                 msg = "Timer name must be specified."
 
+                        if msg == "Oops! Invalid command entered.":
+                            try:
+                                cm = Config.objects.get(user= profile, key=command[1:])
+                                msg = cm.content
+                            except Config.DoesNotExist:
+                                pass
+
                         resp = {
                             "msg": msg,
                             "done": True,

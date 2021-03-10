@@ -196,32 +196,35 @@ export default {
       this.submitBt = false
       this.submitSpinner = true
       if (this.chat.length > 0) {
-        var d = new Date()
-        var hr = ''
-        var mn = ''
-        var sc = ''
-        var zo = 'PM'
-        if (String(d.getHours()).length === 1) {
-          hr = '0' + String(d.getHours())
-          zo = 'AM'
-        } else {
-          hr = String(d.getHours())
-        }
-        if (String(d.getMinutes()).length === 1) {
-          mn = '0' + String(d.getMinutes())
-        } else {
-          mn = String(d.getMinutes())
-        }
-        if (String(d.getSeconds()).length === 1) {
-          sc = '0' + String(d.getSeconds())
-        } else {
-          sc = String(d.getSeconds())
-        }
-        var time = hr + ':' + mn + ':' + sc + zo
-        this.chats[this.chats.length] = {
-          who: 'user',
-          mes: this.chat,
-          time: time
+        var dir = this.chat.substr(0, 1)
+        if (dir === '/') {
+          var d = new Date()
+          var hr = ''
+          var mn = ''
+          var sc = ''
+          var zo = 'PM'
+          if (String(d.getHours()).length === 1) {
+            hr = '0' + String(d.getHours())
+            zo = 'AM'
+          } else {
+            hr = String(d.getHours())
+          }
+          if (String(d.getMinutes()).length === 1) {
+            mn = '0' + String(d.getMinutes())
+          } else {
+            mn = String(d.getMinutes())
+          }
+          if (String(d.getSeconds()).length === 1) {
+            sc = '0' + String(d.getSeconds())
+          } else {
+            sc = String(d.getSeconds())
+          }
+          var time = hr + ':' + mn + ':' + sc + zo
+          this.chats[this.chats.length] = {
+            who: 'user',
+            mes: this.chat,
+            time: time
+          }
         }
         var ct = this.chat
         this.chat = ''
@@ -247,7 +250,7 @@ export default {
           this.submitSpinner = false
           if (response.data.done) {
             this.config = response.data.config
-            if (response.data.showmes === true) {
+            if (response.data.showmes === true || response.data.showmes === false) {
               var d = new Date()
               var hr = ''
               var mn = ''
