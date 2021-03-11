@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Profile, Chat, Config, Timer
+from .models import Profile, Chat, Config, Timer, List
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -27,6 +27,13 @@ class TimerSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Timer
+        fields = '__all__'
+
+
+class ListSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = List
         fields = '__all__'
 
 

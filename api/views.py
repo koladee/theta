@@ -7,7 +7,7 @@ from django.contrib.auth import authenticate, login
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from .serializers import ProfileSerializer, ChatSerializer, ConfigSerializer, TimerSerializer
-from .models import Profile, Chat, Config, Timer
+from .models import Profile, Chat, Config, Timer, List
 import random
 import string
 import time
@@ -909,9 +909,158 @@ class ChatEndpoint(APIView):
                             else:
                                 msg = "Timer name must be specified."
 
+                        if cmds[0][1:] == "list":
+                            if cmds[1] == "create":
+                                if cmds[2] != "" and cmds[2] is not None:
+                                    try:
+                                        List.objects.get(user=profile, key=cmds[2])
+                                        msg = "You already have an existing list with the specified list name."
+                                    except List.DoesNotExist:
+                                        List.objects.create(key=cmds[2], user=profile)
+                                        msg = "List successfully created."
+                                else:
+                                    msg = "List name must be specified."
+
+                            if cmds[1] == "add" or cmds[1] == "suffix":
+                                if cmds[2] != "" and cmds[2] is not None:
+                                    try:
+                                        lst = List.objects.get(user=profile, key=cmds[2])
+                                        if cmds[3] != "" and cmds[3] is not None:
+                                            start = 5 + 1 + len(cmds[1]) + 1 + len(cmds[2]) + 1
+                                            mes = command[start:]
+                                            content = lst.content.split("{:||:}")
+                                            content.append(mes)
+                                            ncontent = "{:||:}".join(content)
+                                            List.objects.filter(user=profile, key=cmds[2]).update(content=ncontent)
+                                            if cmds[1] == "suffix":
+                                                msg = "Message successfully appended to the end of the list."
+                                            else:
+                                                msg = "Message successfully added to list."
+                                        else:
+                                            msg = "Message to be added to list must be specified."
+                                    except List.DoesNotExist:
+                                        msg = "Specified list name does not exist."
+                                else:
+                                    msg = "List name must be specified."
+
+                            if cmds[1] == "remove":
+                                if cmds[2] != "" and cmds[2] is not None:
+                                    try:
+                                        lst = List.objects.get(user=profile, key=cmds[2])
+                                        if cmds[3] != "" and cmds[3] is not None:
+                                            if cmds[3].isdigit():
+                                                if int(cmds[3]) >= 1:
+                                                    content = lst.content.split("{:||:}")
+                                                    if int(cmds[3]) <= (len(content) - 1):
+                                                        content.remove(content[int(cmds[3])])
+                                                        ncontent = "{:||:}".join(content)
+                                                        List.objects.filter(user=profile, key=cmds[2])\
+                                                            .update(content=ncontent)
+                                                        msg = "Item successfully removed from list."
+                                                    else:
+                                                        msg = "Specified ID number is out of range, there are only " \
+                                                              "" + str((len(content) - 1)) + " items is this list."
+                                                else:
+                                                    msg = "ID number must be greater than zero (0)."
+                                            else:
+                                                msg = "Specified ID number must be numeric."
+                                        else:
+                                            msg = "ID number of the item to be removed " \
+                                                  "from this list must be specified."
+                                    except List.DoesNotExist:
+                                        msg = "Specified list name does not exist."
+                                else:
+                                    msg = "List name must be specified."
+
+                            if cmds[1] == "mode":
+                                if cmds[2] != "" and cmds[2] is not None:
+                                    try:
+                                        lst = List.objects.get(user=profile, key=cmds[2])
+                                        if cmds[3] != "" and cmds[3] is not None:
+                                            if cmds[3] == "order" or cmds[3] == "random":
+                                                content = lst.content.split("{:||:}")
+                                                if cmds[3] == "order":
+                                                    i = 1
+                                                    ncontent = [""]
+                                                    for c in content:
+                                                        if c != "":
+                                                            ncontent.append(str(i) + ". " + c + "<br><br>")
+                                                            i = i + 1
+                                                    ncontent[0] = "<div style=\"text-align: center;\">" \
+                                                                  "<b style=\"font-weight: bolder\">"\
+                                                                  + lst.key + "<b></div><br><br>"
+                                                    msg = "".join(ncontent)
+                                                elif cmds[3] == "random":
+                                                    i = 1
+                                                    nncontent = []
+                                                    ncontent = [""]
+                                                    for c in content:
+                                                        if c != "":
+                                                            nncontent.append(str(i) + ". " + c + "<br><br>")
+                                                            i = i + 1
+                                                    ncontent[0] = "<div style=\"text-align: center;\">" \
+                                                                  "<b style=\"font-weight: bolder\">" \
+                                                                  + lst.key + "<b></div><br><br>"
+                                                    random.shuffle(nncontent)
+                                                    for n in nncontent:
+                                                        ncontent.append(n)
+                                                    msg = "".join(ncontent)
+                                            else:
+                                                msg = "The fourth parameter can only be \"order\" or \"random\"."
+                                        else:
+                                            msg = "A fourth parameter is required for this command."
+                                    except List.DoesNotExist:
+                                        msg = "Specified list name does not exist."
+                                else:
+                                    msg = "List name must be specified."
+
+                            if cmds[1] == "prefix":
+                                if cmds[2] != "" and cmds[2] is not None:
+                                    try:
+                                        lst = List.objects.get(user=profile, key=cmds[2])
+                                        if cmds[3] != "" and cmds[3] is not None:
+                                            start = 5 + 1 + len(cmds[1]) + 1 + len(cmds[2]) + 1
+                                            mes = command[start:]
+                                            content = lst.content.split("{:||:}")
+                                            content[0] = mes
+                                            content.insert(0, "")
+                                            ncontent = "{:||:}".join(content)
+                                            List.objects.filter(user=profile, key=cmds[2]).update(content=ncontent)
+                                            msg = "Message successfully added to the beginning of the list."
+                                        else:
+                                            msg = "Message to be added to list must be specified."
+                                    except List.DoesNotExist:
+                                        msg = "Specified list name does not exist."
+                                else:
+                                    msg = "List name must be specified."
+
+                            if cmds[1] == "showall" or cmds[1] == "showallcontents":
+                                if cmds[2] != "" and cmds[2] is not None:
+                                    try:
+                                        lst = List.objects.get(user=profile, key=cmds[2])
+                                        content = lst.content.split("{:||:}")
+                                        i = 1
+                                        ncontent = [""]
+                                        for c in content:
+                                            if c != "":
+                                                if cmds[1] == "showallcontents":
+                                                    ncontent.append(str(i) + ". " + c + "<br><br>")
+                                                    i = i + 1
+                                                if cmds[1] == "showall":
+                                                    ncontent.append( c + "<br><br>")
+                                        if cmds[1] == "showallcontents":
+                                            ncontent[0] = "<div style=\"text-align: center;\">" \
+                                                          "<b style=\"font-weight: bolder\">"\
+                                                          + lst.key + "<b></div><br><br>"
+                                        msg = "".join(ncontent)
+                                    except List.DoesNotExist:
+                                        msg = "Specified list name does not exist."
+                                else:
+                                    msg = "List name must be specified."
+
                         if msg == "Oops! Invalid command entered.":
                             try:
-                                cm = Config.objects.get(user= profile, key=command[1:])
+                                cm = Config.objects.get(user=profile, key=command[1:])
                                 msg = cm.content
                             except Config.DoesNotExist:
                                 pass
