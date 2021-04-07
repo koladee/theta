@@ -182,7 +182,7 @@ class GetGiftableEndpoint(APIView):
                     payload = {}
                     headers = {
                         # "Authorization": "Bearer "+p.access_token
-                        "Authorization": "Bearer z6i44ds842zfq5iivj9e5wyi84vniarp"
+                        "Authorization": "Bearer "
                     }
                     # print(user_id)
                     res = requests.request("GET", url, headers=headers, data=payload)
@@ -545,7 +545,7 @@ class SendChatEndpoint(APIView):
                 })
                 headers = {
                     'Content-Type': 'application/json',
-                    "Authorization": "Bearer z6i44ds842zfq5iivj9e5wyi84vniarp"
+                    "Authorization": "Bearer "
                 }
                 res = requests.request("POST", url, headers=headers, data=payload)
                 return Response({"channel_id": channel_id, "message": message, "res": res})
