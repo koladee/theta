@@ -6,17 +6,712 @@ from rest_framework.response import Response
 from django.contrib.auth import authenticate, login
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
-from .serializers import ProfileSerializer, ChatSerializer, ConfigSerializer, TimerSerializer
-from .models import Profile, Chat, Config, Timer, List
+from .serializers import ProfileSerializer, ChatSerializer, ConfigSerializer, TimerSerializer, RewardSerializer
+from .models import Profile, Chat, Config, Timer, List, Reward
 import random
 import string
 import time
 from datetime import datetime, timezone, timedelta
+import requests
+import json
+import re
 # Create your views here.
 
 
 class HomeView(TemplateView):
     template_name = "index.html"
+
+
+class AuthEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                code = form['code']
+                url = "https://api.theta.tv/v1/oauth/token?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
+                      "&client_secret=y0t4a9nqg0sq6dhajm8cjyrqn11g458k&grant_type=authorization_code&code="+str(code)
+                payload = {}
+                headers = ({"access_token": "z6i44ds842zfq5iivj9e5wyi84vniarp"})
+                res = requests.request("POST", url, headers=headers, data=payload)
+                data = json.loads(res.text)
+                # print(data)
+
+                # s = "xaz /xazx /xaxsza /zsxdaszdx zasxz /xaaz xaaaz"
+                # pattern = r"/\w*\b"
+                # out = re.findall(pattern, s)
+                # for x in out:
+                #     print(x)
+
+                msg = ""
+                if data['status'] == "SUCCESS":
+                    try:
+                        p = Profile.objects.get(rid=data['body']['user_id'])
+                        Profile.objects.filter(rid=data['body']['user_id']).update(
+                            access_token=data['body']['access_token'], refresh_token=data['body']['refresh_token'])
+                        msg = "User's account exists on mrnft bot."
+                        resp = {
+                            "msg": msg,
+                            "done": True,
+                            "data": {"email": p.user.email, "password": p.rid}
+                        }
+                    except Profile.DoesNotExist:
+                        url = "https://mrnft.gg/api/user/"
+                        payload = {
+                            "user_id": data['body']['user_id']
+                        }
+                        headers = {}
+                        ress = requests.request("POST", url, headers=headers, data=payload)
+                        dat = json.loads(ress.text)
+                        # print(dat)
+                        ndat = ""
+                        for r in dat['res']:
+                            ndat = ndat+r
+                        dataa = json.loads(ndat)
+                        if dataa['status'] == "SUCCESS":
+                            username = dataa['body']['username']
+                            email = username+"@mrnft.gg"
+                            rid = data['body']['user_id']
+                            password = rid
+                            url = "https://mrnft.gg/api/user/xp/"
+                            payload = {
+                                "user_id": data['body']['user_id']
+                            }
+                            headers = {}
+                            ress = requests.request("POST", url, headers=headers, data=payload)
+                            dat = json.loads(ress.text)
+                            # print(dat)
+                            if dat.done is True:
+                                lvl = 1
+                                if len(dat.data) > 0:
+                                    lvl = dat.data[0]['level']
+                                try:
+                                    u = User.objects.get(username=username)
+                                    msg = "User's account with this username exists on mrnft bot."
+                                    resp = {
+                                        "msg": msg,
+                                        "done": True,
+                                        "data": {"email": u.email, "password": u.profile.rid}
+                                    }
+                                except User.DoesNotExist:
+                                    user = User.objects.create_user(username=username, email=email, password=password,
+                                                                    first_name="", last_name="")
+                                    user.save()
+                                    theuser = User.objects.get(username=username)
+                                    Profile.objects.filter(user=theuser).\
+                                        update(rid=rid, level=str(lvl), access_token=data['body']['access_token'],
+                                               refresh_token=data['body']['refresh_token'])
+                                    msg = "New account singed up on mrnft bot."
+                                    resp = {
+                                        "msg": msg,
+                                        "done": True,
+                                        "data": {"email": email, "password": password}
+                                    }
+                            else:
+                                pass
+                        else:
+                            msg = "User's account does not exist."
+                            resp = {
+                                "msg": msg,
+                                "done": False
+                            }
+                else:
+                    msg = "Invalid authorization code."
+                    resp = {
+                        "msg": msg,
+                        "done": False
+                    }
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class RefreshEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                token = form['token']
+                # token = "z6i44ds842zfq5iivj9e5wyi84vniarp"
+                url = "https://api.theta.tv/v1/oauth/token?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq&client_secret" \
+                      "=y0t4a9nqg0sq6dhajm8cjyrqn11g458k&grant_type=refresh_token&refresh_token="+str(token)
+                payload = {}
+                headers = {}
+                res = requests.request("POST", url, headers=headers, data=payload)
+                return Response({"token": token, "res": res})
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class GetGiftableEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+                try:
+                    p = Profile.objects.get(rid=user_id)
+                    url = "https://api.theta.tv/v1/user/" + user_id\
+                          + "/gift_items?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
+                            "&client_secret=y0t4a9nqg0sq6dhajm8cjyrqn11g458k"
+                    payload = {}
+                    headers = {
+                        # "Authorization": "Bearer "+p.access_token
+                        "Authorization": "Bearer z6i44ds842zfq5iivj9e5wyi84vniarp"
+                    }
+                    # print(user_id)
+                    res = requests.request("GET", url, headers=headers, data=payload)
+                    data = json.loads(res.text)
+                    print(data['body'])
+                    resp = {
+                        "msg": "success",
+                        "done": True,
+                        "data": []
+                    }
+                    return Response(resp)
+                except User.DoesNotExist:
+                    pass
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class NewRewardEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+                level = form['level']
+                reward = form['reward']
+                reward_type = form['reward_type']
+                try:
+                    p = Profile.objects.get(rid=user_id)
+                    try:
+                        Reward.objects.get(user=p, level=level)
+                        msg = "You already have a setting for the specified level, " \
+                              "kindly make use of the edit function."
+                        resp = {
+                            "msg": msg,
+                            "done": False
+                        }
+                    except Reward.DoesNotExist:
+                        Reward.objects.create(level=level, reward=reward, reward_type=reward_type, user=p)
+                        msg = "New reward setting successfully registered."
+                        url = "https://mrnft.gg/api/rewards/"
+                        payload = json.dumps({
+                            "user_id": user_id
+                        })
+                        headers = {
+                            'Content-Type': 'application/json'
+                        }
+                        res = requests.request("POST", url, headers=headers, data=payload)
+                        ress = json.loads(res.text)
+                        if ress['done'] is True:
+                            data = ress['data']
+                            resp = {
+                                "msg": msg,
+                                "done": True,
+                                "data": data
+                            }
+                        else:
+                            msg = msg + " \nError: " + ress['msg']
+                            resp = {
+                                "msg": msg,
+                                "done": True
+                            }
+                except Profile.DoesNotExist:
+                    msg = "The specified user does not exist."
+                    resp = {
+                        "msg": msg,
+                        "done": False
+                    }
+
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class EditRewardEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+                level = form['level']
+                reward = form['reward']
+                reward_type = form['reward_type']
+                try:
+                    p = Profile.objects.get(rid=user_id)
+                    try:
+                        Reward.objects.get(user=p, level=level)
+                        Reward.objects.filter(user=p, level=level)\
+                            .update(reward=reward, reward_type=reward_type)
+                        msg = "Setting successfully edited."
+                        url = "https://mrnft.gg/api/rewards/"
+                        payload = json.dumps({
+                            "user_id": user_id
+                        })
+                        headers = {
+                            'Content-Type': 'application/json'
+                        }
+                        res = requests.request("POST", url, headers=headers, data=payload)
+                        ress = json.loads(res.text)
+                        if ress['done'] is True:
+                            data = ress['data']
+                            resp = {
+                                "msg": msg,
+                                "done": True,
+                                "data": data
+                            }
+                        else:
+                            msg = msg + " \nError: " + ress['msg']
+                            resp = {
+                                "msg": msg,
+                                "done": True
+                            }
+                    except Reward.DoesNotExist:
+                        msg = "You do not have an existing setting for the specified level to be edited.."
+                        resp = {
+                            "msg": msg,
+                            "done": False
+                        }
+
+                except Profile.DoesNotExist:
+                    msg = "The specified user does not exist."
+                    resp = {
+                        "msg": msg,
+                        "done": False
+                    }
+
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class DeleteRewardEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+                level = form['level']
+                try:
+                    p = Profile.objects.get(rid=user_id)
+                    try:
+                        Reward.objects.get(user=p, level=level)
+                        Reward.objects.filter(user=p, level=level).delete()
+                        msg = "Setting successfully deleted."
+                        resp = {
+                            "msg": msg,
+                            "done": True
+                        }
+                    except Reward.DoesNotExist:
+                        msg = "You do not have an existing setting for the specified level to be deleted.."
+                        resp = {
+                            "msg": msg,
+                            "done": False
+                        }
+
+                except Profile.DoesNotExist:
+                    msg = "The specified user does not exist."
+                    resp = {
+                        "msg": msg,
+                        "done": False
+                    }
+
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class MyRewardsEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+                try:
+                    p = Profile.objects.get(rid=user_id)
+                    rewards = Reward.objects.filter(user=p).order_by('level').all()
+                    rwds = []
+                    for r in rewards:
+                        put = {
+                            "level": r.level,
+                            "reward_type": r.reward_type,
+                            "reward": r.reward,
+                            "created_date": r.created_date
+                        }
+                        rwds.append(put)
+                    msg = "success"
+                    resp = {
+                        "msg": msg,
+                        "done": True,
+                        "data": rwds
+                    }
+                except Profile.DoesNotExist:
+                    msg = "The specified user does not exist."
+                    resp = {
+                        "msg": msg,
+                        "done": False
+                    }
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class ShowRewardEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+                try:
+                    p = Profile.objects.get(rid=user_id)
+                    rewards = Reward.objects.filter(user=p, level=p.level).order_by('level').all()
+                    rwds = []
+                    for r in rewards:
+                        put = {
+                            "username": p.user.username,
+                            "level": r.level,
+                            "reward": r.reward,
+                        }
+                        rwds.append(put)
+                    msg = "success"
+                    resp = {
+                        "msg": msg,
+                        "done": True,
+                        "data": rwds
+                    }
+                except Profile.DoesNotExist:
+                    msg = "The specified user does not exist."
+                    resp = {
+                        "msg": msg,
+                        "done": False
+                    }
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class GiftGiftableEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                channel_id = form['channel_id']
+                user_id = form['user_id']
+                prize_id = form['prize_id']
+                url = "https://api.theta.tv/v1/channel/" \
+                      ""+channel_id+"/channel_action?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
+                                    "&client_secret=y0t4a9nqg0sq6dhajm8cjyrqn11g458k"
+
+                payload = json.dumps({
+                    "type": "gift_item",
+                    "user_id": user_id,
+                    "prize_id": prize_id
+                })
+                headers = {
+                    'Content-Type': 'application/json'
+                }
+
+                res = requests.request("POST", url, headers=headers, data=payload)
+                return Response({"user_id": user_id, "channel_id": channel_id, "prize_id": prize_id, "res": res})
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class SendChatEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                channel_id = "usrc0wckk4wvyzrwyfg"
+                message = form['message']
+                url = "https://api.theta.tv/v1/channel/" \
+                      "" + channel_id + "/channel_action?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
+                                        "&client_secret=y0t4a9nqg0sq6dhajm8cjyrqn11g458k"
+                payload = json.dumps({
+                    "type": "chat_message",
+                    "message": message
+                })
+                headers = {
+                    'Content-Type': 'application/json',
+                    "Authorization": "Bearer z6i44ds842zfq5iivj9e5wyi84vniarp"
+                }
+                res = requests.request("POST", url, headers=headers, data=payload)
+                return Response({"channel_id": channel_id, "message": message, "res": res})
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class GetUserEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                user_id = form['user_id']
+
+                url = "https://api.theta.tv/v1/user/"+user_id
+                payload = {}
+                headers = {
+                    "Client-ID": "gxauus7bts9229e1caa7pc1rcdsiv9fq"
+                }
+                res = requests.request("GET", url, headers=headers, data=payload)
+                return Response({"user_id": user_id, "res": res})
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class UserChatEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                channel_id = form['channel_id']
+                token = form['token']
+                user_id = form['user_id']
+                message = form['message']
+                url = "https://api.theta.tv/v1/channel/"+channel_id+"/channel_action"
+                payload = json.dumps({
+                    "type": "chat_message",
+                    "message": message
+                })
+                headers = {
+                    'x-auth-user': user_id,
+                    'x-auth-token': token,
+                    'Content-Type': 'application/json'
+                }
+                res = requests.request("POST", url, headers=headers, data=payload)
+                return Response({"user_id": user_id, "channel_id": channel_id,
+                                 "token": token, "message": message, "res": res})
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class FollowChannelEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        # post request to create a new user
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                channel_id = form['channel_id']
+                token = form['token']
+                user_id = form['user_id']
+                url = "https://api.theta.tv/v1/channel/"+channel_id+"/channel_action"
+                payload = json.dumps({
+                    "type": "channel_follow",
+                })
+                headers = {
+                    'x-auth-user': user_id,
+                    'x-auth-token': token,
+                    'Content-Type': 'application/json'
+                }
+                res = requests.request("POST", url, headers=headers, data=payload)
+                return Response({"user_id": user_id, "channel_id": channel_id, "token": token, "res": res})
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
+
+
+class UserXPEndpoint(APIView):
+    @csrf_exempt
+    def post(self, request):
+        if request.method == 'POST':
+            form = request.data
+            if form is not None:
+                channel_id = "usrc0wckk4wvyzrwyfg"
+                user_id = form['user_id']
+                url = "https://api.theta.tv/v1/channel/" + channel_id + "/channel_xp/list"
+                payload = {}
+                headers = {}
+                res = requests.request("GET", url, headers=headers, data=payload)
+                xp = json.loads(res.text)
+                pk = [d for d in xp['body'] if d['user_id'] == user_id]
+                for x in xp['body']:
+                    try:
+                        Profile.objects.get(rid=x['user']['id'])
+                    except Profile.DoesNotExist:
+                        username = x['user']['username']
+                        email = x['user']['username']+"@mrnft.gg"
+                        rid = x['user']['id']
+                        level = x['level']
+                        try:
+                            User.objects.get(username=username)
+                        except User.DoesNotExist:
+                            User.objects.create_user(email=email, username=username, password=rid)
+                            usr = User.objects.get(username=username)
+                            Profile.objects.filter(user=usr).update(rid=rid, level=level)
+                resp = {
+                    "msg": "success",
+                    "done": True,
+                    "data": pk
+                }
+                return Response(resp)
+            else:
+                resp = {
+                    "msg": "All fields are required",
+                    "done": False
+                }
+                return Response(resp)
+        else:
+            resp = {
+                "msg": "Invalid request",
+                "done": False
+            }
+            return Response(resp, 400)
 
 
 class ProfileEndpoint(APIView):
@@ -265,27 +960,28 @@ class TimerEndpoint(APIView):
                             t = Timer.objects.get(user=udd, fire_time__lte=int(time.time()), fired=False)
                             vws = t.viewers.split('//')
                             if udd.user.username not in vws:
-                                tms.append({'sender': t.user.user.username, 'content': t.content})
-                                print(tms)
+                                tms.append({'sender': udd.user.username, 'content': t.content})
+                                # print(tms)
                                 vws.append(udd.user.username)
                                 nvws = "//".join(vws)
-                                Timer.objects.filter(id=t.id).update(viewers=nvws)
+                                # Timer.objects.filter(id=t.id).update(viewers=nvws)
                         except Timer.DoesNotExist:
                             pass
                         except Timer.MultipleObjectsReturned:
-                            ts = Timer.objects.filter(user=udd, fire_time__lte=int(time.time()),
-                                                      fire_time__gte=(int(time.time()) - 60), fired=False).all()
+                            # fire_time__gte = (int(time.time()) - 60)
+                            ts = Timer.objects.filter(user=udd, fire_time__lte=int(time.time()), fired=False).all()
                             for t in ts:
                                 vws = t.viewers.split('//')
                                 if udd.user.username not in vws:
-                                    tms.append({'sender': t.user.user.username, 'content': t.content})
+                                    tms.append({'sender': udd.user.username, 'content': t.content})
                                     vws.append(udd.user.username)
                                     nvws = "//".join(vws)
-                                    Timer.objects.filter(id=t.id).update(viewers=nvws)
-                        exps = Timer.objects.filter(user=udd, fire_time__lt=(int(time.time() - 90))
-                                                    , fired=False).all()
+                                    # Timer.objects.filter(id=t.id).update(viewers=nvws)
+                        exps = Timer.objects.filter(user=udd, fire_time__lte=(int(time.time())), fired=False).all()
                         for exp in exps:
-                            Timer.objects.filter(id=exp.id).update(fired=True)
+                            fire_time = (int(time.time())+(int(exp.minutes)*60))
+                            Timer.objects.filter(id=exp.id).update(fire_time=fire_time)
+                            print('expired')
                         for tm in tms:
                             if "{Bot.Alias}" in tm['content']:
                                 try:
@@ -310,7 +1006,7 @@ class TimerEndpoint(APIView):
                                 tm['content'] = tm['content'].replace("{Sender.Username}", tm['sender'])
 
                             if "{Target.Username}" in tm['content']:
-                                tm['content'] = tm['content'].replace("{Target.Username}", "Emote's Username")
+                                tm['content'] = tm['content'].replace("{Target.Username}", "Username")
 
                             if "{Amount}" in tm['content']:
                                 tm['content'] = tm['content'].replace("{Amount}", "$0.00")
@@ -324,6 +1020,177 @@ class TimerEndpoint(APIView):
                             if "{Text}" in tm['content']:
                                 tm['content'] = tm['content'].replace("{Text}", "Some random text goes here...")
 
+                            if "!" in tm['content'] or "/" in tm['content']:
+                                di = ""
+                                s = tm['content']
+                                out1 = []
+                                out2 = []
+                                if "!" in tm['content']:
+                                    di = "!"
+                                    pattern = r"!\w*\b"
+                                    out1 = re.findall(pattern, s)
+
+                                if "/" in tm['content']:
+                                    di = "/"
+                                    pattern = r"/\w*\b"
+                                    out2 = re.findall(pattern, s)
+
+                                out = out1 + out2
+                                for x in out:
+                                    k = x[1:].split('.')
+                                    kk = ''.join(k)
+                                    try:
+                                        com = Config.objects.get(key=kk)
+                                        tm['content'] = tm['content'].replace(di + kk, com.content)
+                                    except Config.DoesNotExist:
+                                        try:
+                                            li = List.objects.get(key=kk)
+                                            if "!" in li.content or "/" in li.content:
+                                                di1 = ""
+                                                s = li.content
+                                                out1 = []
+                                                out2 = []
+                                                if "!" in li.content:
+                                                    di1 = "!"
+                                                    pattern = r"!\w*\b"
+                                                    out1 = re.findall(pattern, s)
+
+                                                if "/" in li.content:
+                                                    di1 = "/"
+                                                    pattern = r"/\w*\b"
+                                                    out2 = re.findall(pattern, s)
+
+                                                out = out1 + out2
+                                                for j in out:
+                                                    k1 = j[1:].split('.')
+                                                    kk1 = ''.join(k1)
+                                                    try:
+                                                        com = Config.objects.get(key=kk1)
+                                                        li.content = li.content.replace(di1 + kk1, com.content)
+                                                        content = li.content.split("{:||:}")
+                                                        i = 1
+                                                        ncontent = ["<br><br>"]
+                                                        for c in content:
+                                                            if c != "<br><br>" and c != "":
+                                                                ncontent.append(str(i) + ". " + c + "<br><br>")
+                                                                i = i + 1
+                                                        li.content = "".join(ncontent)
+                                                        tm['content'] = tm['content'].replace(di + kk, li.content)
+                                                    except Config.DoesNotExist:
+                                                        pass
+                                        except List.DoesNotExist:
+                                            pass
+                        # perform level_up  algorithm here
+                        users = Profile.objects.filter().all()
+                        for user in users:
+                            if user.rid[0:3] == "usr":
+                                url = "https://mrnft.gg/api/xp/"
+                                payload = {
+                                    "user_id": user.rid
+                                }
+                                headers = {}
+                                ress = requests.request("POST", url, headers=headers, data=payload)
+                                dat = json.loads(ress.text)
+                                # print(dat)
+                                if len(dat['data']) > 0:
+                                    level = dat['data'][0]['level']
+                                    if int(level) > int(user.level):
+                                        # print(dat['data'])
+                                        # update level
+                                        Profile.objects.filter(rid=user.rid).update(level=level)
+                                        # send nft (Not available)
+                                        # send level up message to Theta tv chat
+                                        rwds = [
+                                            {
+                                                "id": 'tmp0000000000000045',
+                                                "metadata": {
+                                                    "name": 'Happy Toast',
+                                                    "image_urls": {
+                                                        "large": 'https://user-beta-slivertv.imgix.net/usrw6zhxdeqt9r'
+                                                                 '57wnq/avatar/emotes/4cfdf973-96a4-4bf9-988a-c24e8fa'
+                                                                 'd0cff.png'
+                                                    },
+                                                    "code": ':SubwaySubshappytoast:'
+                                                }
+                                            },
+                                            {
+                                                "id": 'tmp0000000000000122',
+                                                "metadata": {
+                                                    "name": 'classyozlove',
+                                                    "image_urls": {
+                                                        "large": 'https://user-beta-slivertv.imgix.net/usrw6zhxdeqt9r'
+                                                                 '57wnq/avatar/emotes/bd73434f-24a9-4a23-bc08-71b1796'
+                                                                 'f01d3.png'
+                                                    },
+                                                    "code": ':SubwaySubsozlove:'
+                                                }
+                                            },
+                                            {
+                                                "id": 'tmp0000000000000046',
+                                                "metadata": {
+                                                    "name": 'Heart Eyes Toast',
+                                                    "image_urls": {
+                                                        "large": 'https://user-beta-slivertv.imgix.net/usrw6zhxdeqt9r57'
+                                                                 'wnq/avatar/emotes/9fafa613-2db4-4204-97cc-706d5c4d'
+                                                                 'f4c5.png'
+                                                    },
+                                                    "code": ':SubwaySubshearteyes:'
+                                                }
+                                            },
+                                            {
+                                                "id": 'tmp0000000000000047',
+                                                "metadata": {
+                                                    "name": 'Heart',
+                                                    "image_urls": {
+                                                        "large": 'https://user-beta-slivertv.imgix.net/usrw6zhxdeqt9r'
+                                                                 '57wnq/avatar/emotes/cd705520-71ca-4a22-b705-a5d3a65'
+                                                                 '65f21.png'
+                                                    },
+                                                    "code": ':SubwaySubsheart:'
+                                                }
+                                            }
+                                        ]
+                                        url = "https://mrnft.gg/api/giftable/get/"
+                                        payload = {
+                                            "user_id": user.rid
+                                        }
+                                        headers = {}
+                                        ress = requests.request("POST", url, headers=headers, data=payload)
+                                        dat = json.loads(ress.text)
+                                        if dat['done']:
+                                            if len(dat['data']) > 0:
+                                                rwds = dat['data']
+                                        rwd = rwds[0]
+                                        try:
+                                            reward = Reward.objects.get(level=level, user=user)
+                                            pk = [d for d in rwds if d['id'] == reward.reward]
+                                            rwd = pk[0]
+                                        except Reward.DoesNotExist:
+                                            pass
+                                        chatmsg = "Congrats "+\
+                                                  user.user.username+", you reached Level " +\
+                                                  str(level) + " and earned a " +\
+                                                  rwd['metadata']['name'] + " "+rwd['metadata']['code']\
+                                                  + " ! Go check it out here: https://mrnft.gg/?ref="\
+                                                  + str(user.rid)[3:]
+                                        print(chatmsg)
+                                        url = "https://mrnft.gg/api/send/chat/"
+                                        payload = {
+                                            "message": chatmsg
+                                        }
+                                        headers = {}
+                                        ress = requests.request("POST", url, headers=headers, data=payload)
+                                        dat = json.loads(ress.text)
+                                        print(dat)
+                        for tm in tms:
+                            url = "https://mrnft.gg/api/send/chat/"
+                            payload = {
+                                "message": tm['content']
+                            }
+                            headers = {}
+                            ress = requests.request("POST", url, headers=headers, data=payload)
+                            dat = json.loads(ress.text)
+                            print(dat)
                         resp = {'done': True, 'mes': '', 'data': tms}
                         return Response(resp)
                     except User.DoesNotExist:
@@ -392,8 +1259,9 @@ class ChatEndpoint(APIView):
         coms = ['add', 'remove', 'test', 'alias', 'hellomsg', 'followmsg', 'donationmsg', 'hellomsgsub', 'hellomsgmod',
                 'submsg', 'levelupmsg', 'removefollowmsg', 'removedonationmsg', 'removehellomsg', 'removesubmsg',
                 'removelevelupmsg', 'commands', 'subonly', 'modonly', 'streameronly', 'minlvl', 'maxlvl',
-                'publiccommands', 'hiddencommands', 'history', 'togglemodpermissions', 'pause', 'resetbot']
-        langs = ['english', 'french', 'german', 'polish', 'serbian', 'addtimer']
+                'publiccommands', 'hiddencommands', 'history', 'togglemodpermissions', 'pause', 'resetbot', 'addtimer',
+                'listtimers', 'removetimer', 'changetimer', 'list', 'suffix', 'prefix']
+        langs = ['english', 'french', 'german', 'polish', 'serbian']
         try:
             profile = Profile.objects.get(id=sender)
             chat = Chat.objects.create(command=command, sender=profile, rid=rand, remark="",

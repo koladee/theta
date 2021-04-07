@@ -1,6 +1,6 @@
 <template>
   <div id="app-index">
-    <div v-if="loginDiv" class="row" style="margin: 0px; padding: 0px;">
+    <div v-if="loginDiv" class="row hidden" style="margin: 0px; padding: 0px;">
       <div class="col-md-4"></div>
       <div class="col-md-4" style="padding-top: 7%;">
         <div class="card" style="padding: 20px; background: #fff; color: #122b40;">
@@ -75,7 +75,7 @@
 import axios from 'axios'
 import Cookies from 'js-cookie'
 
-const API_URL = 'http://127.0.0.1:8000'
+const API_URL = 'https://mrnft.gg'
 export default {
   name: 'Index',
   data () {

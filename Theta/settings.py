@@ -26,7 +26,7 @@ SECRET_KEY = 'ak$ugzn=^4_wkz4t(x^2$&z#6f_bu^r$+8*o=o08+73igakp!7'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = ['mrnft.gg', 'www.mrnft.gg']
 
 
 # Application definition
@@ -127,6 +127,6 @@ STATIC_URL = '/static/'
 
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ORIGIN_WHITELIST = (
-       'http://localhost:8081',
-       'http://127.0.0.1:8081',
+       'mrnft.gg',
+       'www.mrnft.gg',
 )
