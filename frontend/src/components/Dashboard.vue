@@ -38,7 +38,7 @@
                 <table style="width: 100%; padding: 0px;">
                   <tr>
                     <td style="width: 90%">
-                      <textarea class="form-control" v-model="chat" placeholder="Enter BOT Commands" minlength="10" rows="2"
+                      <textarea id="chat-textarea" v-on:keydown="enterSubmit($event)" class="form-control" v-model="chat" placeholder="Enter BOT Commands" minlength="10" rows="2"
                           cols="50" style="resize: none; border-top-right-radius: 0px; border-bottom-right-radius: 0px; border-right: 0px solid #fff;"></textarea>
                     </td>
                     <td style="width: 10%">
@@ -365,8 +365,22 @@ export default {
     setInterval(() => {
       this.fetchTimer(this.activeUser)
     }, 5000)
+    setInterval(() => {
+      if (this.chat === '') {
+        this.$el.querySelector('#chat-textarea').focus()
+      }
+    }, 1000)
   },
   methods: {
+    enterSubmit (e) {
+      if (this.chat !== '') {
+        if (e.keyCode === 13 && e.shiftKey) {
+          // prevent default behavior
+          e.preventDefault()
+          this.submitList()
+        }
+      }
+    },
     onChange (event) {
       this.category = event.target.value
     },
@@ -580,7 +594,8 @@ export default {
             'X-CSRFToken': Cookies.get('csrftoken')
           }
         }).then((response) => {
-        // console.log(response.data)
+        // console.log('yesssssss')
+        // console.log(response.data.data)
         if (response.data.done) {
           if (response.data.data.length > 0) {
             this.emotes = response.data.data

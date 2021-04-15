@@ -38,6 +38,14 @@ class AuthEndpoint(APIView):
                 data = json.loads(res.text)
                 # print(data)
 
+                # url = "https://mrnft.gg/api/xp/"
+                # payload = {
+                #     "user_id": "usrh4dwae6epttzx2kb"
+                # }
+                # headers = {}
+                # ress = requests.request("POST", url, headers=headers, data=payload)
+                # print(ress.text)
+
                 # s = "xaz /xazx /xaxsza /zsxdaszdx zasxz /xaaz xaaaz"
                 # pattern = r"/\w*\b"
                 # out = re.findall(pattern, s)
@@ -74,7 +82,7 @@ class AuthEndpoint(APIView):
                             email = username+"@mrnft.gg"
                             rid = data['body']['user_id']
                             password = rid
-                            url = "https://mrnft.gg/api/user/xp/"
+                            url = "https://mrnft.gg/api/xp/"
                             payload = {
                                 "user_id": data['body']['user_id']
                             }
@@ -82,13 +90,13 @@ class AuthEndpoint(APIView):
                             ress = requests.request("POST", url, headers=headers, data=payload)
                             dat = json.loads(ress.text)
                             # print(dat)
-                            if dat.done is True:
+                            if len(dat.data) > 0:
                                 lvl = 1
                                 if len(dat.data) > 0:
                                     lvl = dat.data[0]['level']
                                 try:
                                     u = User.objects.get(username=username)
-                                    msg = "User's account with this username exists on mrnft bot."
+                                    msg = "User's account with this username exists on this bot."
                                     resp = {
                                         "msg": msg,
                                         "done": True,
@@ -109,7 +117,12 @@ class AuthEndpoint(APIView):
                                         "data": {"email": email, "password": password}
                                     }
                             else:
-                                pass
+                                msg = "You are not a follower of this channel, kindly follow this channel " \
+                                      "and reattempt login."
+                                resp = {
+                                    "msg": msg,
+                                    "done": False
+                                }
                         else:
                             msg = "User's account does not exist."
                             resp = {
@@ -176,22 +189,36 @@ class GetGiftableEndpoint(APIView):
                 user_id = form['user_id']
                 try:
                     p = Profile.objects.get(rid=user_id)
-                    url = "https://api.theta.tv/v1/user/" + user_id\
-                          + "/gift_items?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
-                            "&client_secret=y0t4a9nqg0sq6dhajm8cjyrqn11g458k"
+                    url = "https://api.theta.tv/v1/user/usrh4dwae6epttzx2kb" \
+                          "/gift_items?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
+                          "&client_secret=y0t4a9nqg0sq6dhajm8cjyrqn11g458k"
                     payload = {}
                     headers = {
                         # "Authorization": "Bearer "+p.access_token
-                        "Authorization": "Bearer "
+                        "Authorization": "Bearer v3bw8u8q055053hamsz68kxxhpuyhu95"
                     }
-                    # print(user_id)
+                    print(user_id)
                     res = requests.request("GET", url, headers=headers, data=payload)
                     data = json.loads(res.text)
-                    print(data['body'])
+                    # print(data['body']['item_forge'][1])
+                    rwds = []
+                    put = data['body']['item_forge']
+                    for p in put:
+                        rw = {
+                            "id": p['id'],
+                            "metadata": {
+                                "name": p['metadata']['name'],
+                                "image_urls": {
+                                    "large": p['metadata']['image_urls']['large']
+                                },
+                                "code": p['creator']['username']
+                            }
+                        }
+                        rwds.append(rw)
                     resp = {
                         "msg": "success",
                         "done": True,
-                        "data": []
+                        "data": rwds
                     }
                     return Response(resp)
                 except User.DoesNotExist:
@@ -534,7 +561,7 @@ class SendChatEndpoint(APIView):
         if request.method == 'POST':
             form = request.data
             if form is not None:
-                channel_id = "usrc0wckk4wvyzrwyfg"
+                channel_id = "usrh4dwae6epttzx2kb"
                 message = form['message']
                 url = "https://api.theta.tv/v1/channel/" \
                       "" + channel_id + "/channel_action?client_id=gxauus7bts9229e1caa7pc1rcdsiv9fq" \
@@ -545,7 +572,7 @@ class SendChatEndpoint(APIView):
                 })
                 headers = {
                     'Content-Type': 'application/json',
-                    "Authorization": "Bearer "
+                    "Authorization": "Bearer v3bw8u8q055053hamsz68kxxhpuyhu95"
                 }
                 res = requests.request("POST", url, headers=headers, data=payload)
                 return Response({"channel_id": channel_id, "message": message, "res": res})
@@ -578,6 +605,7 @@ class GetUserEndpoint(APIView):
                     "Client-ID": "gxauus7bts9229e1caa7pc1rcdsiv9fq"
                 }
                 res = requests.request("GET", url, headers=headers, data=payload)
+                print(res)
                 return Response({"user_id": user_id, "res": res})
             else:
                 resp = {
@@ -672,13 +700,15 @@ class UserXPEndpoint(APIView):
         if request.method == 'POST':
             form = request.data
             if form is not None:
-                channel_id = "usrc0wckk4wvyzrwyfg"
+                channel_id = "usrh4dwae6epttzx2kb"
                 user_id = form['user_id']
                 url = "https://api.theta.tv/v1/channel/" + channel_id + "/channel_xp/list"
                 payload = {}
                 headers = {}
                 res = requests.request("GET", url, headers=headers, data=payload)
                 xp = json.loads(res.text)
+                followers = len(xp['body'])
+                Profile.objects.filter(rid="usrh4dwae6epttzx2kb").update(followers=followers)
                 pk = [d for d in xp['body'] if d['user_id'] == user_id]
                 for x in xp['body']:
                     try:
@@ -981,23 +1011,41 @@ class TimerEndpoint(APIView):
                         for exp in exps:
                             fire_time = (int(time.time())+(int(exp.minutes)*60))
                             Timer.objects.filter(id=exp.id).update(fire_time=fire_time)
-                            print('expired')
+                            # print('expired')
                         for tm in tms:
                             if "{Bot.Alias}" in tm['content']:
                                 try:
-                                    c = Config.objects.get(user=udd, key="alias")
-                                    tm['content'] = tm['content'].replace("{Bot.Alias}", c.content)
-                                except Config.DoesNotExist:
-                                    tm['content'] = tm['content'].replace("{Bot.Alias}", "ThetaBot")
+                                    strma = Profile.objects.get(rid="usrh4dwae6epttzx2kb")
+                                    try:
+                                        c = Config.objects.get(user=strma, key="alias")
+                                        tm['content'] = tm['content'].replace("{Bot.Alias}", c.content)
+                                    except Config.DoesNotExist:
+                                        tm['content'] = tm['content'].replace("{Bot.Alias}", "MrNFTBot")
+                                except Profile.DoesNotExist:
+                                    tm['content'] = tm['content'].replace("{Bot.Alias}", "MrNFTBot")
 
                             if "{Streamer.Username}" in tm['content']:
-                                tm['content'] = tm['content'].replace("{Streamer.Username}", udd.user.username)
+                                try:
+                                    strma = Profile.objects.get(rid="usrh4dwae6epttzx2kb")
+                                    tm['content'] = tm['content'].replace("{Streamer.Username}", strma.user.username)
+                                except Profile.DoesNotExist:
+                                    pass
 
                             if "{Streamer.Uptime}" in tm['content']:
-                                tm['content'] = tm['content'].replace("{Streamer.Uptime}", "0 minutes")
+                                try:
+                                    strma = Profile.objects.get(rid="usrh4dwae6epttzx2kb")
+                                    tm['content'] = tm['content'].replace("{Streamer.Uptime}",
+                                                                          str(strma.uptime)+" minutes")
+                                except Profile.DoesNotExist:
+                                    pass
 
                             if "{Streamer.Followers}" in tm['content']:
-                                tm['content'] = tm['content'].replace("{Streamer.Followers}", "0 followers")
+                                try:
+                                    strma = Profile.objects.get(rid="usrh4dwae6epttzx2kb")
+                                    tm['content'] = tm['content'].replace("{Streamer.Followers}",
+                                                                          str(strma.followers)+" followers")
+                                except Profile.DoesNotExist:
+                                    tm['content'] = tm['content'].replace("{Streamer.Followers}", "0 followers")
 
                             if "{Streamer.Viewers}" in tm['content']:
                                 tm['content'] = tm['content'].replace("{Streamer.Viewers}", "0 streamers")
@@ -1015,7 +1063,11 @@ class TimerEndpoint(APIView):
                                 tm['content'] = tm['content'].replace("{Note}", "A long note goes here")
 
                             if "{Level}" in tm['content']:
-                                tm['content'] = tm['content'].replace("{Level}", str(udd.level))
+                                try:
+                                    strma = Profile.objects.get(rid="usrh4dwae6epttzx2kb")
+                                    tm['content'] = tm['content'].replace("{Level}", str(strma.level))
+                                except Profile.DoesNotExist:
+                                    tm['content'] = tm['content'].replace("{Level}", "1")
 
                             if "{Text}" in tm['content']:
                                 tm['content'] = tm['content'].replace("{Text}", "Some random text goes here...")
@@ -1068,11 +1120,26 @@ class TimerEndpoint(APIView):
                                                         com = Config.objects.get(key=kk1)
                                                         li.content = li.content.replace(di1 + kk1, com.content)
                                                         content = li.content.split("{:||:}")
+                                                        cont = []
+                                                        mx = len(content) - 1
+                                                        if li.order == "order":
+                                                            con = content[int(li.index)]
+                                                            nindex = 1
+                                                            if int(li.index) < mx:
+                                                                nindex = int(li.index) + 1
+                                                            cont.append(con)
+                                                            List.objects.filter(key=li.key, user=li.user)\
+                                                                .update(index=nindex)
+                                                        if li.order == "random":
+                                                            ind = random.choice(list(range(1, mx)))
+                                                            con = content[ind]
+                                                            cont.append(con)
+                                                        content = cont
                                                         i = 1
-                                                        ncontent = ["<br><br>"]
+                                                        ncontent = []
                                                         for c in content:
                                                             if c != "<br><br>" and c != "":
-                                                                ncontent.append(str(i) + ". " + c + "<br><br>")
+                                                                ncontent.append(c)
                                                                 i = i + 1
                                                         li.content = "".join(ncontent)
                                                         tm['content'] = tm['content'].replace(di + kk, li.content)
@@ -1094,6 +1161,8 @@ class TimerEndpoint(APIView):
                                 # print(dat)
                                 if len(dat['data']) > 0:
                                     level = dat['data'][0]['level']
+                                    uptime = dat['data'][0]['xp']
+                                    Profile.objects.filter(rid=user.rid).update(uptime=uptime)
                                     if int(level) > int(user.level):
                                         # print(dat['data'])
                                         # update level
@@ -1411,12 +1480,12 @@ class ChatEndpoint(APIView):
                             if len(cmds) > 1:
                                 try:
                                     Config.objects.get(user=profile, key='levelupmsg')
-                                    Config.objects.filter(user=profile, key='levelupmsg').update(content=command[8:],
+                                    Config.objects.filter(user=profile, key='levelupmsg').update(content=command[12:],
                                                                                                  modified_date=datetime.
                                                                                                  now(timezone.utc))
                                     msg = "Your level up message was successfully updated."
                                 except Config.DoesNotExist:
-                                    do = Config.objects.create(user=profile, key='levelupmsg', content=command[8:],
+                                    do = Config.objects.create(user=profile, key='levelupmsg', content=command[12:],
                                                                modified_date=datetime.now(timezone.utc),
                                                                created_date=datetime.now(timezone.utc))
                                     do.save()
@@ -1506,12 +1575,15 @@ class ChatEndpoint(APIView):
 
                         if command[1:9] == "subonly ":
                             if command[9:] not in coms:
-                                try:
-                                    Config.objects.get(user=profile, key=command[9:])
-                                    Config.objects.filter(user=profile, key=command[9:]).update(permission="subonly")
-                                    msg = "The permission of "+command[9:]+" was successfully changed to subonly."
-                                except Config.DoesNotExist:
-                                    msg = "You do not have "+command[9:]+" setting configured."
+                                if profile.rid == "usrh4dwae6epttzx2kb":
+                                    try:
+                                        Config.objects.get(user=profile, key=command[9:])
+                                        Config.objects.filter(user=profile, key=command[9:]).update(permission="subonly")
+                                        msg = "The permission of "+command[9:]+" was successfully changed to subonly."
+                                    except Config.DoesNotExist:
+                                        msg = "You do not have "+command[9:]+" setting configured."
+                                else:
+                                    msg = "You do not have enough permission to use this command!"
                             else:
                                 msg = "You're not allowed to perform this operation on this command name."
 
@@ -1848,6 +1920,8 @@ class ChatEndpoint(APIView):
                                             if cmds[3] == "order" or cmds[3] == "random":
                                                 content = lst.content.split("{:||:}")
                                                 if cmds[3] == "order":
+                                                    List.objects.filter(user=profile, key=cmds[2])\
+                                                        .update(order="order", index="1")
                                                     i = 1
                                                     ncontent = [""]
                                                     for c in content:
@@ -1859,6 +1933,8 @@ class ChatEndpoint(APIView):
                                                                   + lst.key + "<b></div><br><br>"
                                                     msg = "".join(ncontent)
                                                 elif cmds[3] == "random":
+                                                    List.objects.filter(user=profile, key=cmds[2]) \
+                                                        .update(order="random", index="1")
                                                     i = 1
                                                     nncontent = []
                                                     ncontent = [""]
@@ -1925,6 +2001,35 @@ class ChatEndpoint(APIView):
                                         msg = "Specified list name does not exist."
                                 else:
                                     msg = "List name must be specified."
+
+                            if cmds[1] is not None and len(cmds) == 2:
+                                try:
+                                    li = List.objects.get(key=cmds[1], user=profile)
+                                    content = li.content.split("{:||:}")
+                                    cont = []
+                                    mx = len(content) - 1
+                                    if li.order == "order":
+                                        con = content[int(li.index)]
+                                        nindex = 1
+                                        if int(li.index) < mx:
+                                            nindex = int(li.index) + 1
+                                        cont.append(con)
+                                        List.objects.filter(key=li.key, user=li.user) \
+                                            .update(index=nindex)
+                                    if li.order == "random":
+                                        ind = random.choice(list(range(1, mx)))
+                                        con = content[ind]
+                                        cont.append(con)
+                                    content = cont
+                                    i = 1
+                                    ncontent = []
+                                    for c in content:
+                                        if c != "<br><br>" and c != "":
+                                            ncontent.append(c)
+                                            i = i + 1
+                                    msg = "".join(ncontent)
+                                except List.DoesNotExist:
+                                    msg = "You do not have any list configured with the specified name!"
 
                         if msg == "Oops! Invalid command entered.":
                             try:

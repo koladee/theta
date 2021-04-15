@@ -18,6 +18,8 @@ class Profile(models.Model):
     language = models.CharField(max_length=20, default="english")
     access_token = models.CharField(max_length=200, default="", blank=True)
     refresh_token = models.CharField(max_length=200, default="", blank=True)
+    uptime = models.CharField(max_length=200, default="", blank=True)
+    followers = models.CharField(max_length=200, default="0", blank=True)
     reg_date = models.DateTimeField(default=datetime.now, blank=True)
 
     def __str__(self):
@@ -83,6 +85,8 @@ class List(models.Model):
     key = models.CharField(max_length=100, blank=False)
     user = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='List')
     content = models.TextField(blank=False)
+    index = models.CharField(max_length=100, default="1", blank=False)
+    order = models.CharField(max_length=100, default="order", blank=False)
     created_date = models.DateTimeField(default=datetime.now, blank=True)
 
     def __str__(self):

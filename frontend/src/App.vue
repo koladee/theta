@@ -28,6 +28,17 @@
     </nav>
     <router-view v-if="logoutsess" @message="setSession"/>
     <Dashboard v-if="loginsess" v-bind:uid="uid" v-bind:activeUser="activeUser" v-bind:activeName="activeName.charAt(0).toUpperCase() + activeName.substring(1)" v-bind:showSettings="showSettings" v-bind:hideSettings="hideSettings" />
+    <div v-if="!loginsess && !emotesView && showRoller">
+      <div class="row" style="margin: 0px;">
+        <div class="col-md-3"></div>
+        <div class="col-md-6" style="padding-top: 10%;">
+          <center>
+            <roller></roller>
+          </center>
+        </div>
+        <div class="col-md-3"></div>
+      </div>
+    </div>
     <div v-if="!loginsess && emotesView">
       <div class="row" style="padding-top: 10%; margin: 0px;">
         <div class="col-md-3"></div>
@@ -131,7 +142,8 @@ export default {
             code: ':SubwaySubsheart:'
           }
         }
-      ]
+      ],
+      showRoller: false
     }
   },
   created () {
@@ -184,7 +196,7 @@ export default {
             'X-CSRFToken': Cookies.get('csrftoken')
           }
         }).then((response) => {
-        // console.log(response.data)
+        console.log(response.data)
         if (response.data.done) {
           if (response.data.data.length > 0) {
             this.emotes = response.data.data
@@ -251,6 +263,7 @@ export default {
     },
     // The remaining functions bellow are to test the API endpoints
     auth () {
+      this.showRoller = true
       const url = `${API_URL}/api/auth/`
       return axios.post(
         url,
@@ -269,7 +282,8 @@ export default {
             {
               headers: {}
             }).then((response) => {
-            console.log(response.data)
+            this.showRoller = false
+            // console.log(response.data)
             if (response.data.user.length > 0) {
               this.activeName = response.data.data.username
               this.activeUser = response.data.data.email
